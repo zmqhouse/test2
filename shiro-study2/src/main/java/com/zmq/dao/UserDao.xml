@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zmq.dao.UserDao">
+<select id="queryAllUserByUsername" parameterType="string" resultType="User">
+
+    SELECT id,username,password,salt from t_user WHERE  username=#{username}
+</select>
+    <insert id="insertAddUser" parameterType="User">
+        insert into t_user(username,password,salt)VALUES(#{username},#{password},#{salt})
+
+    </insert>
+</mapper>

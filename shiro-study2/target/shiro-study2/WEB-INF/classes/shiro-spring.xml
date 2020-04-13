@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="
+                    http://www.springframework.org/schema/context
+                    http://www.springframework.org/schema/context/spring-context.xsd
+                    http://www.springframework.org/schema/beans
+                    http://www.springframework.org/schema/beans/spring-beans.xsd
+                    http://www.springframework.org/schema/tx
+                    http://www.springframework.org/schema/tx/spring-tx.xsd
+                    http://www.springframework.org/schema/aop
+                    http://www.springframework.org/schema/aop/spring-aop.xsd">
+<!--声明realm-->
+<bean id="myRealm" class="com.zmq.realm.MyRealm">
+    <property name="userService" ref="userServiceImpl"/>
+    <property name="permissionService" ref="permissionServiceImpl"/>
+    <property name="roleService" ref="roleServiceImpl"/>
+    <!--密码比对器-->
+    <property name="credentialsMatcher">
+        <bean class="org.apache.shiro.authc.credential.HashedCredentialsMatcher">
+            <property name="hashAlgorithmName" value="SHA-256"></property>
+            <property name="hashIterations" value="10000"></property>
+            <property name="storedCredentialsHexEncoded" value="false"></property>
+        </bean>
+    </property>
+</bean>
+
+<!--声明securityManager -->
+    <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+        <property name="realm" ref="myRealm"></property>
+        <!--记住我管理器-->
+        <property name="rememberMeManager" ref="rememberMeManager"></property>
+        <!--session管理器-->
+        <property name="sessionManager" ref="sessionManager"></property>
+    </bean>
+
+
+    <!-- shiroFilter -->
+    <!--生产SpringShiroFilter-->
+  <!--  持有shiro的过滤相关规则， 可进行请求的过滤校验，校验请求是否合法)-->
+
+    <bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+
+        <property name="securityManager" ref="securityManager"></property>
+       <!-- 未登录时跳转页面-->
+        <property name="loginUrl"  value="/user/login"></property>
+       <!-- 没有权限跳转页面啊-->
+        <property name="unauthorizedUrl" value="/user/perm/error"></property>
+        <property name="filterChainDefinitions">
+            <value>
+                /user/query=anon
+                /user/insert=authc,roles["banfu"]
+                /user/all=authc
+                /user/update=authc,perms[""student:update""]
+                /order/insert=authc,roles["xuewei"]
+                /user/logout=logout
+
+            </value>
+        </property>
+    </bean>
+
+    <!--记住我的cookie-->
+    <bean id="rememberMeCookie" class="org.apache.shiro.web.servlet.SimpleCookie">
+        <!-- rememberMe是cookie值中的key，value对用户名的密文
+             cookie["rememberMe":"deleteMe"]此cookie每次登录后都会写出,用户清除之前的cookie
+             cookie["rememberMe":"username的密文"]此cookie也会在登录后写出,用户记录最新的username
+             (ops:如上设计,既能保证每次登录后重新记录cookie,也能保证切换账号时,记录最新账号)
+        -->
+        <property name="name" value="rememberMe"/>
+        <!--  cookie只在http请求中可用，那么通过js脚本将无法读取到cookie信息，有效防止cookie被窃取-->
+        <property name="httpOnly" value="true"/>
+        <!-- cookie的生命周期,单位:秒-->
+        <property name="maxAge" value="604800"/><!-- 7天 -->
+
+
+
+    </bean>
+
+    <!--记住我管理器-->
+    <bean id="rememberMeManager" class="org.apache.shiro.web.mgt.CookieRememberMeManager">
+        <property name="cookie" ref="rememberMeCookie"></property>
+    </bean>
+
+    <!--增加session管理相关配置-->
+    <!--会话Cookie模板 默认可省略-->
+    <bean id="sessionIdCookie" class="org.apache.shiro.web.servlet.SimpleCookie">
+        <!--cookie的key=sid-->
+        <property name="name" value="JSESSIONID"></property>
+        <!-- 只允许http请求访问cookie-->
+        <property name="httpOnly" value="true"></property>
+        <!--cookie过期时间,-1:存活一个会话,单位:秒,默认为-1-->
+        <property name="maxAge" value="-1"></property>
+    </bean>
+
+    <bean id="sessionManager" class="org.apache.shiro.web.session.mgt.DefaultWebSessionManager">
+
+       <!-- session检测器,默认开启的无需配置-->
+        <property name="sessionValidationSchedulerEnabled" value="true"></property>
+
+<!--        session检测时间,默认是360000(一小时)检测一次,可以修改默认值-->
+        <property name="sessionValidationInterval" value="15000"></property>
+
+        <!-- 默认值和配置中给出的一致,所以:bean:sessionIdCookie 可以省略-->
+        <property name="sessionIdCookie" ref="sessionIdCookie"></property>
+        <!-- session全局超时时间,单位:毫秒,30分钟,默认值为1800000-->
+        <property name="globalSessionTimeout" value="10000"></property>
+        <!--注册session监听器-->
+        <property name="sessionListeners">
+            <list>
+                <bean class="com.zmq.session.MySessionListener"></bean>
+            </list>
+        </property>
+
+    </bean>
+</beans>
